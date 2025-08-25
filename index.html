@@ -4,14 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocuSignPro - Professional Document Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.1.0/docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary: #4361ee;
+            --primary-gradient: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
             --secondary: #3a0ca3;
             --accent: #f72585;
             --light: #f8f9fa;
             --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
             --success: #4cc9f0;
+            --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
         }
         
         * {
@@ -22,7 +30,7 @@
         }
         
         body {
-            background-color: #fafafa;
+            background-color: #fafbfd;
             color: var(--dark);
             line-height: 1.6;
         }
@@ -37,7 +45,7 @@
         /* Header Styles */
         header {
             background-color: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
             position: fixed;
             width: 100%;
             top: 0;
@@ -53,17 +61,24 @@
         
         .logo {
             font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo i {
+            font-size: 2rem;
         }
         
         .nav-links {
             display: flex;
             list-style: none;
-        }
-        
-        .nav-links li {
-            margin-left: 30px;
+            gap: 30px;
         }
         
         .nav-links a {
@@ -71,16 +86,35 @@
             color: var(--dark);
             font-weight: 500;
             transition: color 0.3s;
+            position: relative;
+        }
+        
+        .nav-links a:after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 3px;
+            background: var(--primary-gradient);
+            border-radius: 3px;
+            transition: width 0.3s;
         }
         
         .nav-links a:hover {
             color: var(--primary);
         }
         
+        .nav-links a:hover:after {
+            width: 100%;
+        }
+        
         .btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 12px 28px;
-            background-color: var(--primary);
+            background: var(--primary-gradient);
             color: white;
             border-radius: 50px;
             text-decoration: none;
@@ -88,12 +122,12 @@
             transition: all 0.3s;
             border: none;
             cursor: pointer;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
         }
         
         .btn:hover {
-            background-color: var(--secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(67, 97, 238, 0.4);
         }
         
         /* Hero Section */
@@ -105,33 +139,36 @@
         }
         
         .hero-content {
-            max-width: 600px;
+            max-width: 650px;
             z-index: 2;
             position: relative;
         }
         
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: 3.2rem;
             margin-bottom: 20px;
             color: var(--dark);
             line-height: 1.2;
+            font-weight: 800;
         }
         
         .hero p {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             margin-bottom: 30px;
-            color: #555;
+            color: var(--gray);
         }
         
         .hero-buttons {
             display: flex;
             gap: 15px;
+            flex-wrap: wrap;
         }
         
         .btn-outline {
             background-color: transparent;
             border: 2px solid var(--primary);
             color: var(--primary);
+            box-shadow: none;
         }
         
         .btn-outline:hover {
@@ -139,8 +176,8 @@
             color: white;
         }
         
-        /* Form Section */
-        .form-section {
+        /* Template Selection */
+        .templates-section {
             padding: 80px 0;
             background-color: white;
         }
@@ -154,21 +191,120 @@
             font-size: 2.5rem;
             color: var(--dark);
             margin-bottom: 15px;
+            font-weight: 700;
         }
         
         .section-title p {
-            color: #777;
+            color: var(--gray);
             max-width: 600px;
             margin: 0 auto;
+            font-size: 1.1rem;
+        }
+        
+        .templates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .template-card {
+            background-color: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            border: 1px solid var(--light-gray);
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .template-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .template-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--hover-shadow);
+        }
+        
+        .template-card:hover:before {
+            opacity: 1;
+        }
+        
+        .template-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(58, 12, 163, 0.1) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+            color: var(--primary);
+        }
+        
+        .template-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+        
+        .template-card p {
+            color: var(--gray);
+            margin-bottom: 20px;
+        }
+        
+        /* Form Section */
+        .form-section {
+            padding: 80px 0;
+            background-color: var(--light);
+            display: none;
+        }
+        
+        .form-section.active {
+            display: block;
         }
         
         .form-container {
             background-color: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
             padding: 40px;
             max-width: 800px;
             margin: 0 auto;
+        }
+        
+        .form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .form-header h3 {
+            font-size: 1.8rem;
+            color: var(--dark);
+        }
+        
+        .back-to-templates {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
         }
         
         .form-group {
@@ -182,18 +318,19 @@
             color: var(--dark);
         }
         
-        .form-group input {
+        .form-group input, .form-group textarea {
             width: 100%;
             padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            border: 1px solid var(--light-gray);
+            border-radius: 10px;
             font-size: 1rem;
-            transition: border 0.3s;
+            transition: all 0.3s;
         }
         
-        .form-group input:focus {
+        .form-group input:focus, .form-group textarea:focus {
             border-color: var(--primary);
             outline: none;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.1);
         }
         
         .form-row {
@@ -213,7 +350,7 @@
         /* Features Section */
         .features {
             padding: 80px 0;
-            background-color: #f9fafc;
+            background-color: white;
         }
         
         .features-grid {
@@ -225,10 +362,11 @@
         
         .feature-card {
             background-color: white;
-            border-radius: 12px;
+            border-radius: 16px;
             padding: 30px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            box-shadow: var(--card-shadow);
             transition: transform 0.3s;
+            text-align: center;
         }
         
         .feature-card:hover {
@@ -238,23 +376,20 @@
         .feature-icon {
             width: 60px;
             height: 60px;
-            background-color: rgba(67, 97, 238, 0.1);
-            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.1) 0%, rgba(58, 12, 163, 0.1) 100%);
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
-        }
-        
-        .feature-icon svg {
-            width: 30px;
-            height: 30px;
-            fill: var(--primary);
+            margin: 0 auto 20px;
+            font-size: 24px;
+            color: var(--primary);
         }
         
         .feature-card h3 {
             font-size: 1.5rem;
             margin-bottom: 15px;
+            color: var(--dark);
         }
         
         /* Footer */
@@ -265,16 +400,10 @@
         }
         
         .footer-content {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
             margin-bottom: 40px;
-        }
-        
-        .footer-column {
-            flex: 1;
-            min-width: 200px;
-            margin-bottom: 30px;
         }
         
         .footer-column h3 {
@@ -322,6 +451,10 @@
             .nav-links {
                 display: none;
             }
+            
+            .hero-buttons {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -330,14 +463,20 @@
     <header>
         <div class="container">
             <nav>
-                <div class="logo">DocuSignPro</div>
+                <div class="logo">
+                    <i class="fas fa-file-signature"></i>
+                    DocuSignPro
+                </div>
                 <ul class="nav-links">
                     <li><a href="#features">Features</a></li>
                     <li><a href="#pricing">Pricing</a></li>
                     <li><a href="#templates">Templates</a></li>
                     <li><a href="#contact">Contact</a></li>
                 </ul>
-                <a href="#generate" class="btn">Generate Document</a>
+                <a href="#templates" class="btn">
+                    <i class="fas fa-plus"></i>
+                    Create Document
+                </a>
             </nav>
         </div>
     </header>
@@ -346,24 +485,80 @@
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <h1>Create Professional Legal Documents in Minutes</h1>
-                <p>Generate customized, lawyer-approved NDAs with just a few clicks. Save time and ensure compliance with our easy-to-use document generator.</p>
+                <h1>Create Professional Documents in Minutes</h1>
+                <p>Generate customized, professional documents with just a few clicks. Save time and ensure compliance with our easy-to-use document generator.</p>
                 <div class="hero-buttons">
-                    <a href="#generate" class="btn">Create NDA Now</a>
-                    <a href="#features" class="btn btn-outline">Learn More</a>
+                    <a href="#templates" class="btn">
+                        <i class="fas fa-file-alt"></i>
+                        Create Document Now
+                    </a>
+                    <a href="#features" class="btn btn-outline">
+                        <i class="fas fa-info-circle"></i>
+                        Learn More
+                    </a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Form Section -->
-    <section id="generate" class="form-section">
+    <!-- Template Selection Section -->
+    <section id="templates" class="templates-section">
         <div class="container">
             <div class="section-title">
-                <h2>Generate Your NDA</h2>
-                <p>Fill in the details below to create your customized Non-Disclosure Agreement</p>
+                <h2>Choose a Document Template</h2>
+                <p>Select from our professionally designed templates to get started</p>
             </div>
+            <div class="templates-grid">
+                <div class="template-card" data-template="nda">
+                    <div class="template-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <h3>Non-Disclosure Agreement</h3>
+                    <p>Protect your confidential information with a legally sound NDA.</p>
+                    <button class="btn">
+                        <i class="fas fa-plus"></i>
+                        Select Template
+                    </button>
+                </div>
+                
+                <div class="template-card" data-template="service">
+                    <div class="template-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3>Service Agreement</h3>
+                    <p>Define terms and conditions for services provided.</p>
+                    <button class="btn">
+                        <i class="fas fa-plus"></i>
+                        Select Template
+                    </button>
+                </div>
+                
+                <div class="template-card" data-template="meeting">
+                    <div class="template-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <h3>Meeting Protocol</h3>
+                    <p>Document meeting discussions, decisions, and action items.</p>
+                    <button class="btn">
+                        <i class="fas fa-plus"></i>
+                        Select Template
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NDA Form Section -->
+    <section id="nda-form" class="form-section">
+        <div class="container">
             <div class="form-container">
+                <div class="form-header">
+                    <h3><i class="fas fa-lock"></i> Non-Disclosure Agreement</h3>
+                    <a href="#" class="back-to-templates">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Templates
+                    </a>
+                </div>
                 <form id="ndaForm">
                     <div class="form-row">
                         <div class="form-group">
@@ -414,7 +609,130 @@
                     </div>
                     
                     <div class="submit-btn">
-                        <button type="submit" class="btn">Generate & Download NDA</button>
+                        <button type="submit" class="btn">
+                            <i class="fas fa-download"></i>
+                            Generate & Download NDA
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Service Agreement Form Section -->
+    <section id="service-form" class="form-section">
+        <div class="container">
+            <div class="form-container">
+                <div class="form-header">
+                    <h3><i class="fas fa-handshake"></i> Service Agreement</h3>
+                    <a href="#" class="back-to-templates">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Templates
+                    </a>
+                </div>
+                <form id="serviceForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="providerName">Service Provider Name</label>
+                            <input type="text" id="providerName" required placeholder="John Smith">
+                        </div>
+                        <div class="form-group">
+                            <label for="clientName">Client Name</label>
+                            <input type="text" id="clientName" required placeholder="Jane Doe">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="serviceDescription">Service Description</label>
+                            <input type="text" id="serviceDescription" required placeholder="Web development services">
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceFee">Service Fee ($)</label>
+                            <input type="number" id="serviceFee" required placeholder="5000">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="startDate">Start Date</label>
+                            <input type="date" id="startDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">End Date</label>
+                            <input type="date" id="endDate" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="paymentTerms">Payment Terms</label>
+                        <input type="text" id="paymentTerms" required placeholder="50% upfront, 50% on completion">
+                    </div>
+                    
+                    <div class="submit-btn">
+                        <button type="submit" class="btn">
+                            <i class="fas fa-download"></i>
+                            Generate & Download Agreement
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Meeting Protocol Form Section -->
+    <section id="meeting-form" class="form-section">
+        <div class="container">
+            <div class="form-container">
+                <div class="form-header">
+                    <h3><i class="fas fa-clipboard-list"></i> Meeting Protocol</h3>
+                    <a href="#" class="back-to-templates">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Templates
+                    </a>
+                </div>
+                <form id="meetingForm">
+                    <div class="form-group">
+                        <label for="meetingTitle">Meeting Title</label>
+                        <input type="text" id="meetingTitle" required placeholder="Q3 Planning Session">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="meetingDate">Meeting Date</label>
+                            <input type="date" id="meetingDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="meetingTime">Meeting Time</label>
+                            <input type="time" id="meetingTime" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attendees">Attendees (comma separated)</label>
+                        <input type="text" id="attendees" required placeholder="John Smith, Jane Doe, Robert Johnson">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="meetingAgenda">Meeting Agenda</label>
+                        <textarea id="meetingAgenda" rows="3" required placeholder="1. Review Q2 results, 2. Plan Q3 initiatives, 3. Assign responsibilities"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="decisions">Key Decisions Made</label>
+                        <textarea id="decisions" rows="3" required placeholder="- Approved budget for marketing campaign - Hired two new developers"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="actionItems">Action Items</label>
+                        <textarea id="actionItems" rows="3" required placeholder="- John to finalize vendor contracts by Friday - Jane to schedule follow-up meeting"></textarea>
+                    </div>
+                    
+                    <div class="submit-btn">
+                        <button type="submit" class="btn">
+                            <i class="fas fa-download"></i>
+                            Generate & Download Protocol
+                        </button>
                     </div>
                 </form>
             </div>
@@ -426,32 +744,26 @@
         <div class="container">
             <div class="section-title">
                 <h2>Why Choose Our Document Generator</h2>
-                <p>Professional-grade legal documents with the convenience of digital automation</p>
+                <p>Professional-grade documents with the convenience of digital automation</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-8 8z"/>
-                        </svg>
+                        <i class="fas fa-check-circle"></i>
                     </div>
                     <h3>Legally Compliant</h3>
-                    <p>Our templates are created by legal professionals and regularly updated to comply with current regulations.</p>
+                    <p>Our templates are created by professionals and regularly updated to comply with regulations.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                        </svg>
+                        <i class="fas fa-clock"></i>
                     </div>
                     <h3>Save Time</h3>
                     <p>Generate documents in minutes instead of hours. Focus on your business while we handle the paperwork.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 5.5V7H9V5.5L3 7V9L10 11V13L9 13V19H11V14H13V19H15V13L14 13V11L21 9Z"/>
-                        </svg>
+                        <i class="fas fa-edit"></i>
                     </div>
                     <h3>Customizable</h3>
                     <p>Easily tailor documents to your specific needs with our intuitive form-based interface.</p>
@@ -466,7 +778,7 @@
             <div class="footer-content">
                 <div class="footer-column">
                     <h3>DocuSignPro</h3>
-                    <p>Creating professional legal documents made simple and accessible for businesses of all sizes.</p>
+                    <p>Creating professional documents made simple and accessible for businesses of all sizes.</p>
                 </div>
                 <div class="footer-column">
                     <h3>Product</h3>
@@ -503,10 +815,46 @@
     </footer>
 
     <script>
-        // Set today's date as default
-        document.getElementById('effectiveDate').valueAsDate = new Date();
+        // Set today's date as default for all date inputs
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            if (!input.id.includes('endDate')) {
+                input.valueAsDate = new Date();
+            }
+        });
         
-        // Handle form submission
+        // Set time default for meeting time
+        document.getElementById('meetingTime').value = "10:00";
+        
+        // Template selection functionality
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const templateType = this.getAttribute('data-template');
+                document.querySelectorAll('.form-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                document.getElementById(`${templateType}-form`).classList.add('active');
+                window.scrollTo({
+                    top: document.getElementById(`${templateType}-form`).offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // Back to templates functionality
+        document.querySelectorAll('.back-to-templates').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelectorAll('.form-section').forEach(section => {
+                    section.classList.remove('active');
+                });
+                window.scrollTo({
+                    top: document.getElementById('templates').offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            });
+        });
+        
+        // NDA Form Submission
         document.getElementById('ndaForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -528,9 +876,9 @@
                 day: 'numeric'
             });
             
-            // Create the document content
+            // Create document content
             const content = `
-NON-DISCLOSURE AGREEMENT
+Non-Disclosure Agreement
 
 This Non-Disclosure Agreement (the "Agreement") is entered into as of ${formattedDate} by and between:
 
@@ -572,16 +920,138 @@ Signature: ________________________
 This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
             `;
             
-            // Create and download the text file
-            const blob = new Blob([content], { type: 'text/plain' });
+            // Create and download the document
+            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `NDA-${companyName}-${counterpartyName}.txt`;
+            a.download = `NDA-${companyName}-${counterpartyName}.docx`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             
-            alert('Your NDA has been generated and downloaded as a text file!');
+            alert('Your NDA has been generated and downloaded!');
+        });
+        
+        // Service Agreement Form Submission
+        document.getElementById('serviceForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const providerName = document.getElementById('providerName').value;
+            const clientName = document.getElementById('clientName').value;
+            const serviceDescription = document.getElementById('serviceDescription').value;
+            const serviceFee = document.getElementById('serviceFee').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const paymentTerms = document.getElementById('paymentTerms').value;
+            
+            // Format dates
+            const formattedStartDate = new Date(startDate).toLocaleDateString('en-US');
+            const formattedEndDate = new Date(endDate).toLocaleDateString('en-US');
+            
+            // Create document content
+            const content = `
+Service Agreement
+
+This Service Agreement (the "Agreement") is made and entered into as of ${formattedStartDate} by and between:
+
+${providerName}, hereinafter referred to as "Service Provider";
+
+and
+
+${clientName}, hereinafter referred to as "Client."
+
+1. Services
+The Service Provider agrees to provide the following services to the Client: ${serviceDescription}.
+
+2. Compensation
+The Client agrees to pay the Service Provider a fee of $${serviceFee} for the services rendered, payable as follows: ${paymentTerms}.
+
+3. Term
+This Agreement shall commence on ${formattedStartDate} and shall continue until ${formattedEndDate}, unless earlier terminated in accordance with this Agreement.
+
+4. Independent Contractor
+The Service Provider is an independent contractor and not an employee of the Client.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.
+
+SERVICE PROVIDER:
+${providerName}
+Date: ________________________
+Signature: ________________________
+
+CLIENT:
+${clientName}
+Date: ________________________
+Signature: ________________________
+
+This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
+            `;
+            
+            // Create and download the document
+            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Service-Agreement-${providerName}-${clientName}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            alert('Your Service Agreement has been generated and downloaded!');
+        });
+        
+        // Meeting Protocol Form Submission
+        document.getElementById('meetingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const meetingTitle = document.getElementById('meetingTitle').value;
+            const meetingDate = document.getElementById('meetingDate').value;
+            const meetingTime = document.getElementById('meetingTime').value;
+            const attendees = document.getElementById('attendees').value;
+            const meetingAgenda = document.getElementById('meetingAgenda').value;
+            const decisions = document.getElementById('decisions').value;
+            const actionItems = document.getElementById('actionItems').value;
+            
+            // Format date
+            const formattedDate = new Date(meetingDate).toLocaleDateString('en-US');
+            
+            // Create document content
+            const content = `
+Meeting Protocol
+
+Meeting Title: ${meetingTitle}
+Date: ${formattedDate}
+Time: ${meetingTime}
+
+Attendees:
+${attendees.split(',').map(attendee => `- ${attendee.trim()}`).join('\n')}
+
+Agenda:
+${meetingAgenda.split(',').map(item => `- ${item.trim()}`).join('\n')}
+
+Decisions Made:
+${decisions.split('-').filter(item => item.trim()).map(item => `- ${item.trim()}`).join('\n')}
+
+Action Items:
+${actionItems.split('-').filter(item => item.trim()).map(item => `- ${item.trim()}`).join('\n')}
+
+Prepared by: [Your Name]
+Date: ${new Date().toLocaleDateString()}
+
+This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
+            `;
+            
+            // Create and download the document
+            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Meeting-Protocol-${meetingTitle}.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            alert('Your Meeting Protocol has been generated and downloaded!');
         });
     </script>
 </body>
