@@ -464,10 +464,6 @@
             margin-top: 20px;
         }
         
-        .loading.active {
-            display: block;
-        }
-        
         .loading i {
             font-size: 2rem;
             color: var(--primary);
@@ -841,9 +837,6 @@
     </footer>
 
     <script>
-        // Use the docx library classes
-        const { Document, Paragraph, TextRun, Packer } = docx;
-
         // Set today's date as default for all date inputs
         document.querySelectorAll('input[type="date"]').forEach(input => {
             if (!input.id.includes('endDate')) {
@@ -852,19 +845,13 @@
         });
         
         // Set time default for meeting time
-        const meetingTimeInput = document.getElementById('meetingTime');
-        if (meetingTimeInput) {
-            meetingTimeInput.value = "10:00";
-        }
-
+        document.getElementById('meetingTime').value = "10:00";
+        
         // Set end date to 30 days from now
-        const endDateInput = document.getElementById('endDate');
-        if (endDateInput) {
-            const endDate = new Date();
-            endDate.setDate(endDate.getDate() + 30);
-            endDateInput.valueAsDate = endDate;
-        }
-
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+        document.getElementById('endDate').valueAsDate = endDate;
+        
         // Template selection functionality
         document.querySelectorAll('.template-card').forEach(card => {
             card.addEventListener('click', function() {
@@ -893,96 +880,104 @@
                 });
             });
         });
-        
-        // Function to generate and download DOCX file from a doc object
-        async function generateAndDownloadDocx(doc, filename) {
-            try {
-                const blob = await Packer.toBlob(doc);
-                saveAs(blob, filename);
-            } catch (error) {
-                console.error("Error generating or downloading the document:", error);
-                alert("Failed to generate document. Please check the console for details.");
-            }
+
+        // Function to create and download DOCX file
+        async function generateDocx(sections, filename) {
+            const doc = new docx.Document({ sections });
+
+            const buffer = await docx.Packer.toBuffer(doc);
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+
+            saveAs(blob, filename);
         }
-        
-        // --- NDA Form Submission ---
+
+        // --- Form Submission Handlers ---
+
+        // NDA Form
         document.getElementById('ndaForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const loading = document.getElementById('ndaLoading');
-            loading.classList.add('active');
-            
+            loading.style.display = 'block';
+
             const yourName = document.getElementById('yourName').value;
             const yourPassport = document.getElementById('yourPassport').value;
-            const yourEmail = document.getElementById('yourEmail').value;
-            const yourPhone = document.getElementById('yourPhone').value;
             const companyName = document.getElementById('companyName').value;
             const counterpartyName = document.getElementById('counterpartyName').value;
             const counterpartyPassport = document.getElementById('counterpartyPassport').value;
             const effectiveDate = document.getElementById('effectiveDate').value;
             const purpose = document.getElementById('purpose').value;
+            const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-            // Use docx library to create the document
-            const doc = new Document({
-                sections: [{
+            const docSections = [
+                new docx.Section({
                     children: [
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Non-Disclosure Agreement", bold: true, size: 40 }),
-                            ],
+                        new docx.Paragraph({
+                            text: "NON-DISCLOSURE AGREEMENT",
+                            heading: docx.HeadingLevel.HEADING_1,
                             alignment: docx.AlignmentType.CENTER,
                         }),
-                        new Paragraph(""), // Add a space
-                        new Paragraph({
+                        new docx.Paragraph({ text: `Effective Date: ${effectiveDate}` }),
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "This Non-Disclosure Agreement ('Agreement') is made and entered into as of ", bold: false }),
-                                new TextRun({ text: effectiveDate, bold: true }),
-                                new TextRun("."),
+                                new docx.TextRun("This Non-Disclosure Agreement (the “Agreement”) is made and entered into as of the Effective Date by and between:"),
                             ],
                         }),
-                        new Paragraph(""),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `BETWEEN:`, bold: true }),
-                                new TextRun(` ${yourName} (Passport Number: ${yourPassport}) of ${companyName} (the 'Disclosing Party').`),
+                                new docx.TextRun("Disclosing Party:"),
+                                new docx.TextRun({ text: `\n\nName: ${yourName}`, bold: true }),
+                                new docx.TextRun({ text: `\nCompany: ${companyName}`, bold: true }),
+                                new docx.TextRun({ text: `\nPassport Number: ${yourPassport}`, bold: true }),
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `AND:`, bold: true }),
-                                new TextRun(` ${counterpartyName} (Passport Number: ${counterpartyPassport}) (the 'Receiving Party').`),
+                                new docx.TextRun("Receiving Party:"),
+                                new docx.TextRun({ text: `\n\nName: ${counterpartyName}`, bold: true }),
+                                new docx.TextRun({ text: `\nPassport Number: ${counterpartyPassport}`, bold: true }),
                             ],
                         }),
-                        new Paragraph(""),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "1. Purpose.", bold: true }),
-                                new TextRun(` The Disclosing Party wishes to disclose to the Receiving Party certain confidential information (the 'Confidential Information') concerning the purpose of ${purpose}.`),
+                                new docx.TextRun("1. Purpose:"),
+                                new docx.TextRun({ text: `\n\nThe purpose of this Agreement is to protect Confidential Information disclosed by the Disclosing Party to the Receiving Party for the purpose of ${purpose}.`, break: 1 }),
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "2. Confidentiality Obligation.", bold: true }),
-                                new TextRun(" The Receiving Party agrees to hold the Confidential Information in strict confidence and not to disclose it to any third party."),
+                                new docx.TextRun("2. Confidential Information:"),
+                                new docx.TextRun({ text: "\n\n“Confidential Information” means any and all information, whether written or oral, concerning the Disclosing Party's business, finances, products, services, customers, and intellectual property.", break: 1 }),
                             ],
                         }),
-                        new Paragraph(""),
-                        new Paragraph(`This Agreement is for the purpose of protecting confidential information disclosed by the parties involved.`),
-                        new Paragraph(""),
-                        new Paragraph("This is a simplified template. You should consult a legal professional for a full, legally binding document."),
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
+                            children: [
+                                new docx.TextRun("IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written."),
+                            ],
+                        }),
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({ text: `________________________\nDisclosing Party Signature\n\nDate: ${currentDate}` }),
+                        new docx.Paragraph({ text: `\n\n________________________\nReceiving Party Signature\n\nDate: ${currentDate}` }),
                     ],
-                }],
-            });
-
-            await generateAndDownloadDocx(doc, 'NDA.docx');
+                }),
+            ];
             
-            loading.classList.remove('active');
+            await generateDocx(docSections, "Non-Disclosure_Agreement.docx");
+            loading.style.display = 'none';
         });
 
-        // --- Service Form Submission ---
+        // Service Agreement Form
         document.getElementById('serviceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const loading = document.getElementById('serviceLoading');
-            loading.classList.add('active');
+            loading.style.display = 'block';
 
             const providerName = document.getElementById('providerName').value;
             const clientName = document.getElementById('clientName').value;
@@ -992,140 +987,123 @@
             const endDate = document.getElementById('endDate').value;
             const paymentTerms = document.getElementById('paymentTerms').value;
 
-            const doc = new Document({
-                sections: [{
+            const docSections = [
+                new docx.Section({
                     children: [
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Service Agreement", bold: true, size: 40 }),
-                            ],
+                        new docx.Paragraph({
+                            text: "SERVICE AGREEMENT",
+                            heading: docx.HeadingLevel.HEADING_1,
                             alignment: docx.AlignmentType.CENTER,
                         }),
-                        new Paragraph(""),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "This Service Agreement ('Agreement') is entered into as of ", bold: false }),
-                                new TextRun({ text: startDate, bold: true }),
-                                new TextRun(", between:"),
+                                new docx.TextRun("This Service Agreement (the “Agreement”) is made as of "),
+                                new docx.TextRun({ text: new Date(startDate).toLocaleDateString(), bold: true }),
+                                new docx.TextRun(", by and between "),
+                                new docx.TextRun({ text: providerName, bold: true }),
+                                new docx.TextRun(" (the “Service Provider”) and "),
+                                new docx.TextRun({ text: clientName, bold: true }),
+                                new docx.TextRun(" (the “Client”)."),
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `Provider:`, bold: true }),
-                                new TextRun(` ${providerName}`),
+                                new docx.TextRun("1. Services:"),
+                                new docx.TextRun({ text: `\n\nService Provider agrees to provide the following services to the Client: ${serviceDescription}.`, break: 1 }),
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `Client:`, bold: true }),
-                                new TextRun(` ${clientName}`),
+                                new docx.TextRun("2. Term:"),
+                                new docx.TextRun({ text: `\n\nThe term of this Agreement shall commence on ${new Date(startDate).toLocaleDateString()} and shall continue until ${new Date(endDate).toLocaleDateString()}, unless terminated earlier in accordance with this Agreement.`, break: 1 }),
                             ],
                         }),
-                        new Paragraph(""),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "1. Description of Services.", bold: true }),
-                                new TextRun(` The Provider agrees to perform the following services for the Client: ${serviceDescription}.`),
+                                new docx.TextRun("3. Compensation:"),
+                                new docx.TextRun({ text: `\n\nClient agrees to pay the Service Provider a fee of $${serviceFee}. The payment terms are as follows: ${paymentTerms}.`, break: 1 }),
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "2. Term.", bold: true }),
-                                new TextRun(` This Agreement shall commence on ${startDate} and terminate on ${endDate}.`),
+                                new docx.TextRun("IN WITNESS WHEREOF, the parties have executed this Agreement."),
                             ],
                         }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "3. Service Fee.", bold: true }),
-                                new TextRun(` The Client agrees to pay the Provider a total fee of $${serviceFee}.`),
-                            ],
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "4. Payment Terms.", bold: true }),
-                                new TextRun(` Payment shall be made according to the following terms: ${paymentTerms}.`),
-                            ],
-                        }),
-                        new Paragraph(""),
-                        new Paragraph("This is a simplified template. You should consult a legal professional for a full, legally binding document."),
+                        new docx.Paragraph({ text: `\n\n________________________\nService Provider Signature\n\n________________________\nClient Signature` }),
                     ],
-                }],
-            });
-            await generateAndDownloadDocx(doc, 'ServiceAgreement.docx');
-            loading.classList.remove('active');
+                }),
+            ];
+            
+            await generateDocx(docSections, "Service_Agreement.docx");
+            loading.style.display = 'none';
         });
 
-        // --- Meeting Form Submission ---
+        // Meeting Protocol Form
         document.getElementById('meetingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const loading = document.getElementById('meetingLoading');
-            loading.classList.add('active');
+            loading.style.display = 'block';
 
             const meetingTitle = document.getElementById('meetingTitle').value;
             const meetingDate = document.getElementById('meetingDate').value;
             const meetingTime = document.getElementById('meetingTime').value;
-            const attendees = document.getElementById('attendees').value;
-            const meetingAgenda = document.getElementById('meetingAgenda').value;
-            const decisions = document.getElementById('decisions').value;
-            const actionItems = document.getElementById('actionItems').value;
+            const attendees = document.getElementById('attendees').value.split(',').map(name => name.trim());
+            const meetingAgenda = document.getElementById('meetingAgenda').value.split('\n').map(item => item.trim());
+            const decisions = document.getElementById('decisions').value.split('\n').map(item => item.trim());
+            const actionItems = document.getElementById('actionItems').value.split('\n').map(item => item.trim());
 
-            const doc = new Document({
-                sections: [{
+            const docSections = [
+                new docx.Section({
                     children: [
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: meetingTitle, bold: true, size: 40 }),
-                            ],
+                        new docx.Paragraph({
+                            text: `MEETING PROTOCOL: ${meetingTitle.toUpperCase()}`,
+                            heading: docx.HeadingLevel.HEADING_1,
                             alignment: docx.AlignmentType.CENTER,
                         }),
-                        new Paragraph(""),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({ text: `Date: ${new Date(meetingDate).toLocaleDateString()}` }),
+                        new docx.Paragraph({ text: `Time: ${meetingTime}` }),
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `Date:`, bold: true }),
-                                new TextRun(` ${meetingDate}`),
+                                new docx.TextRun({ text: "Attendees:", bold: true }),
+                                ...attendees.map(name => new docx.TextRun({ text: `\n• ${name}` }))
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `Time:`, bold: true }),
-                                new TextRun(` ${meetingTime}`),
+                                new docx.TextRun({ text: "Agenda:", bold: true }),
+                                ...meetingAgenda.map(item => new docx.TextRun({ text: `\n• ${item}` }))
                             ],
                         }),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: `Attendees:`, bold: true }),
-                                new TextRun(` ${attendees}`),
+                                new docx.TextRun({ text: "Key Decisions:", bold: true }),
+                                ...decisions.map(item => new docx.TextRun({ text: `\n• ${item}` }))
                             ],
                         }),
-                        new Paragraph(""),
-                        new Paragraph({
+                        new docx.Paragraph({ text: "" }),
+                        new docx.Paragraph({
                             children: [
-                                new TextRun({ text: "Agenda", bold: true, size: 30 }),
+                                new docx.TextRun({ text: "Action Items:", bold: true }),
+                                ...actionItems.map(item => new docx.TextRun({ text: `\n• ${item}` }))
                             ],
                         }),
-                        new Paragraph(meetingAgenda),
-                        new Paragraph(""),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Key Decisions Made", bold: true, size: 30 }),
-                            ],
-                        }),
-                        new Paragraph(decisions),
-                        new Paragraph(""),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Action Items", bold: true, size: 30 }),
-                            ],
-                        }),
-                        new Paragraph(actionItems),
                     ],
-                }],
-            });
-            await generateAndDownloadDocx(doc, 'MeetingProtocol.docx');
-            loading.classList.remove('active');
+                }),
+            ];
+            
+            await generateDocx(docSections, "Meeting_Protocol.docx");
+            loading.style.display = 'none';
         });
 
-        // This removes the incomplete `document.body.remove` line.
     </script>
 </body>
 </html>
