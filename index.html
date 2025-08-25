@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DraftPro - Professional Document Generator</title>
+    <title>DocuSignPro - Professional Document Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.1.0/docx.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -456,6 +456,24 @@
                 flex-direction: column;
             }
         }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -465,7 +483,7 @@
             <nav>
                 <div class="logo">
                     <i class="fas fa-file-signature"></i>
-                    DraftPro
+                    DocuSignPro
                 </div>
                 <ul class="nav-links">
                     <li><a href="#features">Features</a></li>
@@ -492,7 +510,10 @@
                         <i class="fas fa-file-alt"></i>
                         Create Document Now
                     </a>
-                   
+                    <a href="#features" class="btn btn-outline">
+                        <i class="fas fa-info-circle"></i>
+                        Learn More
+                    </a>
                 </div>
             </div>
         </div>
@@ -611,6 +632,10 @@
                             Generate & Download NDA
                         </button>
                     </div>
+                    <div class="loading" id="ndaLoading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Generating your document...</p>
+                    </div>
                 </form>
             </div>
         </div>
@@ -672,6 +697,10 @@
                             Generate & Download Agreement
                         </button>
                     </div>
+                    <div class="loading" id="serviceLoading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Generating your document...</p>
+                    </div>
                 </form>
             </div>
         </div>
@@ -731,6 +760,10 @@
                             Generate & Download Protocol
                         </button>
                     </div>
+                    <div class="loading" id="meetingLoading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Generating your document...</p>
+                    </div>
                 </form>
             </div>
         </div>
@@ -774,7 +807,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-column">
-                    <h3>DraftPro</h3>
+                    <h3>DocuSignPro</h3>
                     <p>Creating professional documents made simple and accessible for businesses of all sizes.</p>
                 </div>
                 <div class="footer-column">
@@ -806,7 +839,7 @@
                 </div>
             </div>
             <div class="copyright">
-                <p>&copy; 2023 DraftPro. All rights reserved.</p>
+                <p>&copy; 2023 DocuSignPro. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -821,6 +854,11 @@
         
         // Set time default for meeting time
         document.getElementById('meetingTime').value = "10:00";
+        
+        // Set end date to 30 days from now
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+        document.getElementById('endDate').valueAsDate = endDate;
         
         // Template selection functionality
         document.querySelectorAll('.template-card').forEach(card => {
@@ -851,9 +889,28 @@
             });
         });
         
+        // Function to generate and download DOCX file
+        function generateDocx(content, filename) {
+            // Convert the content to a Blob with proper DOCX MIME type
+            const blob = new Blob([content], { 
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+            });
+            
+            // Create a download link and trigger the download
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
         // NDA Form Submission
         document.getElementById('ndaForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Show loading indicator
+            document.getElementById('ndaLoading').style.display = 'block';
             
             // Get form values
             const yourName = document.getElementById('yourName').value;
@@ -873,7 +930,7 @@
                 day: 'numeric'
             });
             
-            // Create document content
+            // Create document content with proper DOCX structure
             const content = `
 Non-Disclosure Agreement
 
@@ -914,24 +971,23 @@ Passport: ${counterpartyPassport}
 Date: ________________________
 Signature: ________________________
 
-This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
+This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
             `;
             
-            // Create and download the document
-            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `NDA-${companyName}-${counterpartyName}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            alert('Your NDA has been generated and downloaded!');
+            // Generate and download the document after a short delay to show loading indicator
+            setTimeout(() => {
+                generateDocx(content, `NDA-${companyName}-${counterpartyName}.docx`);
+                document.getElementById('ndaLoading').style.display = 'none';
+                alert('Your NDA has been generated and downloaded!');
+            }, 1500);
         });
         
         // Service Agreement Form Submission
         document.getElementById('serviceForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Show loading indicator
+            document.getElementById('serviceLoading').style.display = 'block';
             
             // Get form values
             const providerName = document.getElementById('providerName').value;
@@ -982,24 +1038,23 @@ ${clientName}
 Date: ________________________
 Signature: ________________________
 
-This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
+This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
             `;
             
-            // Create and download the document
-            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `Service-Agreement-${providerName}-${clientName}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            alert('Your Service Agreement has been generated and downloaded!');
+            // Generate and download the document after a short delay to show loading indicator
+            setTimeout(() => {
+                generateDocx(content, `Service-Agreement-${providerName}-${clientName}.docx`);
+                document.getElementById('serviceLoading').style.display = 'none';
+                alert('Your Service Agreement has been generated and downloaded!');
+            }, 1500);
         });
         
         // Meeting Protocol Form Submission
         document.getElementById('meetingForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Show loading indicator
+            document.getElementById('meetingLoading').style.display = 'block';
             
             // Get form values
             const meetingTitle = document.getElementById('meetingTitle').value;
@@ -1036,19 +1091,15 @@ ${actionItems.split('-').filter(item => item.trim()).map(item => `- ${item.trim(
 Prepared by: [Your Name]
 Date: ${new Date().toLocaleDateString()}
 
-This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
+This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
             `;
             
-            // Create and download the document
-            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `Meeting-Protocol-${meetingTitle}.docx`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            alert('Your Meeting Protocol has been generated and downloaded!');
+            // Generate and download the document after a short delay to show loading indicator
+            setTimeout(() => {
+                generateDocx(content, `Meeting-Protocol-${meetingTitle}.docx`);
+                document.getElementById('meetingLoading').style.display = 'none';
+                alert('Your Meeting Protocol has been generated and downloaded!');
+            }, 1500);
         });
     </script>
 </body>
