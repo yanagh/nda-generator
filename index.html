@@ -464,6 +464,10 @@
             margin-top: 20px;
         }
         
+        .loading.active {
+            display: block;
+        }
+        
         .loading i {
             font-size: 2rem;
             color: var(--primary);
@@ -477,7 +481,6 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header>
         <div class="container">
             <nav>
@@ -499,7 +502,6 @@
         </div>
     </header>
 
-    <!-- Hero Section -->
     <section class="hero">
         <div class="container">
             <div class="hero-content">
@@ -519,7 +521,6 @@
         </div>
     </section>
 
-    <!-- Template Selection Section -->
     <section id="templates" class="templates-section">
         <div class="container">
             <div class="section-title">
@@ -566,7 +567,6 @@
         </div>
     </section>
 
-    <!-- NDA Form Section -->
     <section id="nda-form" class="form-section">
         <div class="container">
             <div class="form-container">
@@ -641,7 +641,6 @@
         </div>
     </section>
 
-    <!-- Service Agreement Form Section -->
     <section id="service-form" class="form-section">
         <div class="container">
             <div class="form-container">
@@ -706,7 +705,6 @@
         </div>
     </section>
 
-    <!-- Meeting Protocol Form Section -->
     <section id="meeting-form" class="form-section">
         <div class="container">
             <div class="form-container">
@@ -769,7 +767,6 @@
         </div>
     </section>
 
-    <!-- Features Section -->
     <section id="features" class="features">
         <div class="container">
             <div class="section-title">
@@ -802,7 +799,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
     <footer>
         <div class="container">
             <div class="footer-content">
@@ -845,6 +841,9 @@
     </footer>
 
     <script>
+        // Use the docx library classes
+        const { Document, Paragraph, TextRun, Packer } = docx;
+
         // Set today's date as default for all date inputs
         document.querySelectorAll('input[type="date"]').forEach(input => {
             if (!input.id.includes('endDate')) {
@@ -853,13 +852,19 @@
         });
         
         // Set time default for meeting time
-        document.getElementById('meetingTime').value = "10:00";
-        
+        const meetingTimeInput = document.getElementById('meetingTime');
+        if (meetingTimeInput) {
+            meetingTimeInput.value = "10:00";
+        }
+
         // Set end date to 30 days from now
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 30);
-        document.getElementById('endDate').valueAsDate = endDate;
-        
+        const endDateInput = document.getElementById('endDate');
+        if (endDateInput) {
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 30);
+            endDateInput.valueAsDate = endDate;
+        }
+
         // Template selection functionality
         document.querySelectorAll('.template-card').forEach(card => {
             card.addEventListener('click', function() {
@@ -889,30 +894,23 @@
             });
         });
         
-        // Function to generate and download DOCX file
-        function generateDocx(content, filename) {
-            // Convert the content to a Blob with proper DOCX MIME type
-            const blob = new Blob([content], { 
-                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
-            });
-            
-            // Create a download link and trigger the download
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+        // Function to generate and download DOCX file from a doc object
+        async function generateAndDownloadDocx(doc, filename) {
+            try {
+                const blob = await Packer.toBlob(doc);
+                saveAs(blob, filename);
+            } catch (error) {
+                console.error("Error generating or downloading the document:", error);
+                alert("Failed to generate document. Please check the console for details.");
+            }
         }
-
-        // NDA Form Submission
-        document.getElementById('ndaForm').addEventListener('submit', function(e) {
+        
+        // --- NDA Form Submission ---
+        document.getElementById('ndaForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            const loading = document.getElementById('ndaLoading');
+            loading.classList.add('active');
             
-            // Show loading indicator
-            document.getElementById('ndaLoading').style.display = 'block';
-            
-            // Get form values
             const yourName = document.getElementById('yourName').value;
             const yourPassport = document.getElementById('yourPassport').value;
             const yourEmail = document.getElementById('yourEmail').value;
@@ -922,74 +920,70 @@
             const counterpartyPassport = document.getElementById('counterpartyPassport').value;
             const effectiveDate = document.getElementById('effectiveDate').value;
             const purpose = document.getElementById('purpose').value;
-            
-            // Format the date
-            const formattedDate = new Date(effectiveDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+
+            // Use docx library to create the document
+            const doc = new Document({
+                sections: [{
+                    children: [
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Non-Disclosure Agreement", bold: true, size: 40 }),
+                            ],
+                            alignment: docx.AlignmentType.CENTER,
+                        }),
+                        new Paragraph(""), // Add a space
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "This Non-Disclosure Agreement ('Agreement') is made and entered into as of ", bold: false }),
+                                new TextRun({ text: effectiveDate, bold: true }),
+                                new TextRun("."),
+                            ],
+                        }),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `BETWEEN:`, bold: true }),
+                                new TextRun(` ${yourName} (Passport Number: ${yourPassport}) of ${companyName} (the 'Disclosing Party').`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `AND:`, bold: true }),
+                                new TextRun(` ${counterpartyName} (Passport Number: ${counterpartyPassport}) (the 'Receiving Party').`),
+                            ],
+                        }),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "1. Purpose.", bold: true }),
+                                new TextRun(` The Disclosing Party wishes to disclose to the Receiving Party certain confidential information (the 'Confidential Information') concerning the purpose of ${purpose}.`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "2. Confidentiality Obligation.", bold: true }),
+                                new TextRun(" The Receiving Party agrees to hold the Confidential Information in strict confidence and not to disclose it to any third party."),
+                            ],
+                        }),
+                        new Paragraph(""),
+                        new Paragraph(`This Agreement is for the purpose of protecting confidential information disclosed by the parties involved.`),
+                        new Paragraph(""),
+                        new Paragraph("This is a simplified template. You should consult a legal professional for a full, legally binding document."),
+                    ],
+                }],
             });
+
+            await generateAndDownloadDocx(doc, 'NDA.docx');
             
-            // Create document content with proper DOCX structure
-            const content = `
-Non-Disclosure Agreement
-
-This Non-Disclosure Agreement (the "Agreement") is entered into as of ${formattedDate} by and between:
-
-${companyName}, with its principal place of business at [Your Address], represented by ${yourName} (Passport: ${yourPassport}), hereinafter referred to as "Disclosing Party";
-
-and
-
-${counterpartyName} (Passport: ${counterpartyPassport}), hereinafter referred to as "Receiving Party."
-
-1. Purpose
-The Receiving Party agrees to receive confidential information from the Disclosing Party for the following purpose: ${purpose}.
-
-2. Confidential Information
-For purposes of this Agreement, "Confidential Information" shall include all information or material that has or could have commercial value or other utility in the business in which Disclosing Party is engaged.
-
-3. Obligations of Receiving Party
-Receiving Party shall hold and maintain the Confidential Information in strictest confidence for the sole and exclusive benefit of the Disclosing Party.
-
-4. Time Period
-This Agreement shall remain in effect for a period of two (2) years from the date hereof.
-
-5. Relationships
-Nothing contained in this Agreement shall be deemed to constitute either party a partner, joint venturer or employee of the other party for any purpose.
-
-IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.
-
-DISCLOSING PARTY:
-${companyName}
-By: ${yourName}
-Email: ${yourEmail}
-Phone: ${yourPhone}
-
-RECEIVING PARTY:
-${counterpartyName}
-Passport: ${counterpartyPassport}
-Date: ________________________
-Signature: ________________________
-
-This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
-            `;
-            
-            // Generate and download the document after a short delay to show loading indicator
-            setTimeout(() => {
-                generateDocx(content, `NDA-${companyName}-${counterpartyName}.docx`);
-                document.getElementById('ndaLoading').style.display = 'none';
-                alert('Your NDA has been generated and downloaded!');
-            }, 1500);
+            loading.classList.remove('active');
         });
-        
-        // Service Agreement Form Submission
-        document.getElementById('serviceForm').addEventListener('submit', function(e) {
+
+        // --- Service Form Submission ---
+        document.getElementById('serviceForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            // Show loading indicator
-            document.getElementById('serviceLoading').style.display = 'block';
-            
-            // Get form values
+            const loading = document.getElementById('serviceLoading');
+            loading.classList.add('active');
+
             const providerName = document.getElementById('providerName').value;
             const clientName = document.getElementById('clientName').value;
             const serviceDescription = document.getElementById('serviceDescription').value;
@@ -997,66 +991,76 @@ This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             const paymentTerms = document.getElementById('paymentTerms').value;
-            
-            // Format dates
-            const formattedStartDate = new Date(startDate).toLocaleDateString('en-US');
-            const formattedEndDate = new Date(endDate).toLocaleDateString('en-US');
-            
-            // Create document content
-            const content = `
-Service Agreement
 
-This Service Agreement (the "Agreement") is made and entered into as of ${formattedStartDate} by and between:
-
-${providerName}, hereinafter referred to as "Service Provider";
-
-and
-
-${clientName}, hereinafter referred to as "Client."
-
-1. Services
-The Service Provider agrees to provide the following services to the Client: ${serviceDescription}.
-
-2. Compensation
-The Client agrees to pay the Service Provider a fee of $${serviceFee} for the services rendered, payable as follows: ${paymentTerms}.
-
-3. Term
-This Agreement shall commence on ${formattedStartDate} and shall continue until ${formattedEndDate}, unless earlier terminated in accordance with this Agreement.
-
-4. Independent Contractor
-The Service Provider is an independent contractor and not an employee of the Client.
-
-IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.
-
-SERVICE PROVIDER:
-${providerName}
-Date: ________________________
-Signature: ________________________
-
-CLIENT:
-${clientName}
-Date: ________________________
-Signature: ________________________
-
-This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
-            `;
-            
-            // Generate and download the document after a short delay to show loading indicator
-            setTimeout(() => {
-                generateDocx(content, `Service-Agreement-${providerName}-${clientName}.docx`);
-                document.getElementById('serviceLoading').style.display = 'none';
-                alert('Your Service Agreement has been generated and downloaded!');
-            }, 1500);
+            const doc = new Document({
+                sections: [{
+                    children: [
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Service Agreement", bold: true, size: 40 }),
+                            ],
+                            alignment: docx.AlignmentType.CENTER,
+                        }),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "This Service Agreement ('Agreement') is entered into as of ", bold: false }),
+                                new TextRun({ text: startDate, bold: true }),
+                                new TextRun(", between:"),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `Provider:`, bold: true }),
+                                new TextRun(` ${providerName}`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `Client:`, bold: true }),
+                                new TextRun(` ${clientName}`),
+                            ],
+                        }),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "1. Description of Services.", bold: true }),
+                                new TextRun(` The Provider agrees to perform the following services for the Client: ${serviceDescription}.`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "2. Term.", bold: true }),
+                                new TextRun(` This Agreement shall commence on ${startDate} and terminate on ${endDate}.`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "3. Service Fee.", bold: true }),
+                                new TextRun(` The Client agrees to pay the Provider a total fee of $${serviceFee}.`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "4. Payment Terms.", bold: true }),
+                                new TextRun(` Payment shall be made according to the following terms: ${paymentTerms}.`),
+                            ],
+                        }),
+                        new Paragraph(""),
+                        new Paragraph("This is a simplified template. You should consult a legal professional for a full, legally binding document."),
+                    ],
+                }],
+            });
+            await generateAndDownloadDocx(doc, 'ServiceAgreement.docx');
+            loading.classList.remove('active');
         });
-        
-        // Meeting Protocol Form Submission
-        document.getElementById('meetingForm').addEventListener('submit', function(e) {
+
+        // --- Meeting Form Submission ---
+        document.getElementById('meetingForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            // Show loading indicator
-            document.getElementById('meetingLoading').style.display = 'block';
-            
-            // Get form values
+            const loading = document.getElementById('meetingLoading');
+            loading.classList.add('active');
+
             const meetingTitle = document.getElementById('meetingTitle').value;
             const meetingDate = document.getElementById('meetingDate').value;
             const meetingTime = document.getElementById('meetingTime').value;
@@ -1064,43 +1068,64 @@ This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
             const meetingAgenda = document.getElementById('meetingAgenda').value;
             const decisions = document.getElementById('decisions').value;
             const actionItems = document.getElementById('actionItems').value;
-            
-            // Format date
-            const formattedDate = new Date(meetingDate).toLocaleDateString('en-US');
-            
-            // Create document content
-            const content = `
-Meeting Protocol
 
-Meeting Title: ${meetingTitle}
-Date: ${formattedDate}
-Time: ${meetingTime}
-
-Attendees:
-${attendees.split(',').map(attendee => `- ${attendee.trim()}`).join('\n')}
-
-Agenda:
-${meetingAgenda.split(',').map(item => `- ${item.trim()}`).join('\n')}
-
-Decisions Made:
-${decisions.split('-').filter(item => item.trim()).map(item => `- ${item.trim()}`).join('\n')}
-
-Action Items:
-${actionItems.split('-').filter(item => item.trim()).map(item => `- ${item.trim()}`).join('\n')}
-
-Prepared by: [Your Name]
-Date: ${new Date().toLocaleDateString()}
-
-This document was generated by DraftPro on ${new Date().toLocaleDateString()}.
-            `;
-            
-            // Generate and download the document after a short delay to show loading indicator
-            setTimeout(() => {
-                generateDocx(content, `Meeting-Protocol-${meetingTitle}.docx`);
-                document.getElementById('meetingLoading').style.display = 'none';
-                alert('Your Meeting Protocol has been generated and downloaded!');
-            }, 1500);
+            const doc = new Document({
+                sections: [{
+                    children: [
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: meetingTitle, bold: true, size: 40 }),
+                            ],
+                            alignment: docx.AlignmentType.CENTER,
+                        }),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `Date:`, bold: true }),
+                                new TextRun(` ${meetingDate}`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `Time:`, bold: true }),
+                                new TextRun(` ${meetingTime}`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: `Attendees:`, bold: true }),
+                                new TextRun(` ${attendees}`),
+                            ],
+                        }),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Agenda", bold: true, size: 30 }),
+                            ],
+                        }),
+                        new Paragraph(meetingAgenda),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Key Decisions Made", bold: true, size: 30 }),
+                            ],
+                        }),
+                        new Paragraph(decisions),
+                        new Paragraph(""),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Action Items", bold: true, size: 30 }),
+                            ],
+                        }),
+                        new Paragraph(actionItems),
+                    ],
+                }],
+            });
+            await generateAndDownloadDocx(doc, 'MeetingProtocol.docx');
+            loading.classList.remove('active');
         });
+
+        // This removes the incomplete `document.body.remove` line.
     </script>
 </body>
 </html>
