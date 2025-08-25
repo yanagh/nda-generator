@@ -845,282 +845,218 @@
     </footer>
 
     <script>
-        // Set today's date as default for all date inputs
+    window.addEventListener('DOMContentLoaded', () => {
+      const { Document, Packer, Paragraph, HeadingLevel, AlignmentType, TextRun } = docx;
+
+      // Helpers
+      function setDefaultDates() {
         document.querySelectorAll('input[type="date"]').forEach(input => {
-            if (!input.id.includes('endDate')) {
-                input.valueAsDate = new Date();
-            }
+          if (!input.id.includes('endDate')) input.valueAsDate = new Date();
         });
-        
-        // Set time default for meeting time
-        document.getElementById('meetingTime').value = "10:00";
-        
-        // Set end date to 30 days from now
-        const endDate = new Date();
-        endDate.setDate(endDate.getDate() + 30);
-        document.getElementById('endDate').valueAsDate = endDate;
-        
-        // Template selection functionality
-        document.querySelectorAll('.template-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const templateType = this.getAttribute('data-template');
-                document.querySelectorAll('.form-section').forEach(section => {
-                    section.classList.remove('active');
-                });
-                document.getElementById(`${templateType}-form`).classList.add('active');
-                window.scrollTo({
-                    top: document.getElementById(`${templateType}-form`).offsetTop - 100,
-                    behavior: 'smooth'
-                });
-            });
-        });
-        
-        // Back to templates functionality
-        document.querySelectorAll('.back-to-templates').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                document.querySelectorAll('.form-section').forEach(section => {
-                    section.classList.remove('active');
-                });
-                window.scrollTo({
-                    top: document.getElementById('templates').offsetTop - 100,
-                    behavior: 'smooth'
-                });
-            });
-        });
-        
-        // Function to generate and download DOCX file
-        function generateDocx(content, filename) {
-            // Create a simple DOCX structure
-            const docxContent = `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-    <w:body>
-        <w:p>
-            <w:r>
-                <w:t>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '</w:t></w:r></w:p><w:p><w:r><w:t>')}</w:t>
-            </w:r>
-        </w:p>
-    </w:body>
-</w:document>
-            `;
-            
-            // Create a ZIP file containing the document
-            const zip = new JSZip();
-            zip.file("word/document.xml", docxContent);
-            
-            // Add required supporting files
-            zip.file("[Content_Types].xml", `
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="xml" ContentType="application/xml"/>
-    <Default Extension="docx" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document"/>
-    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>
-            `);
-            
-            // Generate the ZIP file and trigger download
-            zip.generateAsync({type:"blob"}).then(function(blob) {
-                saveAs(blob, filename);
-            });
+        const meetingTimeInput = document.getElementById('meetingTime');
+        if (meetingTimeInput && !meetingTimeInput.value) meetingTimeInput.value = "10:00";
+
+        const endDateInput = document.getElementById('endDate');
+        if (endDateInput && !endDateInput.valueAsDate) {
+          const end = new Date();
+          end.setDate(end.getDate() + 30);
+          endDateInput.valueAsDate = end;
         }
+      }
 
-        // NDA Form Submission
-        document.getElementById('ndaForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Show loading indicator
-            document.getElementById('ndaLoading').style.display = 'block';
-            
-            // Get form values
-            const yourName = document.getElementById('yourName').value;
-            const yourPassport = document.getElementById('yourPassport').value;
-            const yourEmail = document.getElementById('yourEmail').value;
-            const yourPhone = document.getElementById('yourPhone').value;
-            const companyName = document.getElementById('companyName').value;
-            const counterpartyName = document.getElementById('counterpartyName').value;
-            const counterpartyPassport = document.getElementById('counterpartyPassport').value;
-            const effectiveDate = document.getElementById('effectiveDate').value;
-            const purpose = document.getElementById('purpose').value;
-            
-            // Format the date
-            const formattedDate = new Date(effectiveDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-            
-            // Create document content
-            const content = `
-Non-Disclosure Agreement
+      async function generateDocx(sections, filename) {
+        try {
+          const doc = new Document({ sections });
+          const blob = await Packer.toBlob(doc); // Browser-safe
+          saveAs(blob, filename);
+        } catch (err) {
+          console.error('Error generating document:', err);
+          alert('An error occurred while generating the document. Please try again.');
+        }
+      }
 
-This Non-Disclosure Agreement (the "Agreement") is entered into as of ${formattedDate} by and between:
-
-${companyName}, with its principal place of business at [Your Address], represented by ${yourName} (Passport: ${yourPassport}), hereinafter referred to as "Disclosing Party";
-
-and
-
-${counterpartyName} (Passport: ${counterpartyPassport}), hereinafter referred to as "Receiving Party."
-
-1. Purpose
-The Receiving Party agrees to receive confidential information from the Disclosing Party for the following purpose: ${purpose}.
-
-2. Confidential Information
-For purposes of this Agreement, "Confidential Information" shall include all information or material that has or could have commercial value or other utility in the business in which Disclosing Party is engaged.
-
-3. Obligations of Receiving Party
-Receiving Party shall hold and maintain the Confidential Information in strictest confidence for the sole and exclusive benefit of the Disclosing Party.
-
-4. Time Period
-This Agreement shall remain in effect for a period of two (2) years from the date hereof.
-
-5. Relationships
-Nothing contained in this Agreement shall be deemed to constitute either party a partner, joint venturer or employee of the other party for any purpose.
-
-IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.
-
-DISCLOSING PARTY:
-${companyName}
-By: ${yourName}
-Email: ${yourEmail}
-Phone: ${yourPhone}
-
-RECEIVING PARTY:
-${counterpartyName}
-Passport: ${counterpartyPassport}
-Date: ________________________
-Signature: ________________________
-
-This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
-            `;
-            
-            // Generate and download the document after a short delay to show loading indicator
-            setTimeout(() => {
-                generateDocx(content, `NDA-${companyName}-${counterpartyName}.docx`);
-                document.getElementById('ndaLoading').style.display = 'none';
-                alert('Your NDA has been generated and downloaded!');
-            }, 1500);
+      // Template selection toggle
+      document.querySelectorAll('.template-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const templateType = card.getAttribute('data-template'); // nda | service | meeting
+          document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+          const formSection = document.getElementById(`${templateType}-form`);
+          if (formSection) {
+            formSection.classList.add('active');
+            window.scrollTo({ top: formSection.offsetTop - 100, behavior: 'smooth' });
+          }
         });
-        
-        // Service Agreement Form Submission
-        document.getElementById('serviceForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Show loading indicator
-            document.getElementById('serviceLoading').style.display = 'block';
-            
-            // Get form values
-            const providerName = document.getElementById('providerName').value;
-            const clientName = document.getElementById('clientName').value;
-            const serviceDescription = document.getElementById('serviceDescription').value;
-            const serviceFee = document.getElementById('serviceFee').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const paymentTerms = document.getElementById('paymentTerms').value;
-            
-            // Format dates
-            const formattedStartDate = new Date(startDate).toLocaleDateString('en-US');
-            const formattedEndDate = new Date(endDate).toLocaleDateString('en-US');
-            
-            // Create document content
-            const content = `
-Service Agreement
+      });
 
-This Service Agreement (the "Agreement") is made and entered into as of ${formattedStartDate} by and between:
-
-${providerName}, hereinafter referred to as "Service Provider";
-
-and
-
-${clientName}, hereinafter referred to as "Client."
-
-1. Services
-The Service Provider agrees to provide the following services to the Client: ${serviceDescription}.
-
-2. Compensation
-The Client agrees to pay the Service Provider a fee of $${serviceFee} for the services rendered, payable as follows: ${paymentTerms}.
-
-3. Term
-This Agreement shall commence on ${formattedStartDate} and shall continue until ${formattedEndDate}, unless earlier terminated in accordance with this Agreement.
-
-4. Independent Contractor
-The Service Provider is an independent contractor and not an employee of the Client.
-
-IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.
-
-SERVICE PROVIDER:
-${providerName}
-Date: ________________________
-Signature: ________________________
-
-CLIENT:
-${clientName}
-Date: ________________________
-Signature: ________________________
-
-This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
-            `;
-            
-            // Generate and download the document after a short delay to show loading indicator
-            setTimeout(() => {
-                generateDocx(content, `Service-Agreement-${providerName}-${clientName}.docx`);
-                document.getElementById('serviceLoading').style.display = 'none';
-                alert('Your Service Agreement has been generated and downloaded!');
-            }, 1500);
+      // Back to templates
+      document.querySelectorAll('.back-to-templates').forEach(link => {
+        link.addEventListener('click', e => {
+          e.preventDefault();
+          document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+          const templatesSection = document.getElementById('templates');
+          if (templatesSection) {
+            window.scrollTo({ top: templatesSection.offsetTop - 100, behavior: 'smooth' });
+          }
         });
-        
-        // Meeting Protocol Form Submission
-        document.getElementById('meetingForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Show loading indicator
-            document.getElementById('meetingLoading').style.display = 'block';
-            
-            // Get form values
-            const meetingTitle = document.getElementById('meetingTitle').value;
-            const meetingDate = document.getElementById('meetingDate').value;
-            const meetingTime = document.getElementById('meetingTime').value;
-            const attendees = document.getElementById('attendees').value;
-            const meetingAgenda = document.getElementById('meetingAgenda').value;
-            const decisions = document.getElementById('decisions').value;
-            const actionItems = document.getElementById('actionItems').value;
-            
-            // Format date
-            const formattedDate = new Date(meetingDate).toLocaleDateString('en-US');
-            
-            // Create document content
-            const content = `
-Meeting Protocol
+      });
 
-Meeting Title: ${meetingTitle}
-Date: ${formattedDate}
-Time: ${meetingTime}
+      // --- Form handlers ---
 
-Attendees:
-${attendees.split(',').map(attendee => `- ${attendee.trim()}`).join('\n')}
+      // NDA
+      const ndaForm = document.getElementById('ndaForm');
+      if (ndaForm) {
+        ndaForm.addEventListener('submit', async e => {
+          e.preventDefault();
+          const loading = document.getElementById('ndaLoading');
+          if (loading) loading.style.display = 'block';
 
-Agenda:
-${meetingAgenda.split(',').map(item => `- ${item.trim()}`).join('\n')}
+          const yourName = document.getElementById('yourName').value;
+          const yourPassport = document.getElementById('yourPassport').value;
+          const companyName = document.getElementById('companyName').value;
+          const counterpartyName = document.getElementById('counterpartyName').value;
+          const counterpartyPassport = document.getElementById('counterpartyPassport').value;
+          const effectiveDate = document.getElementById('effectiveDate').value;
+          const purpose = document.getElementById('purpose').value;
+          const currentDate = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
 
-Decisions Made:
-${decisions.split('-').filter(item => item.trim()).map(item => `- ${item.trim()}`).join('\n')}
+          const sections = [{
+            children: [
+              new Paragraph({ text: "NON-DISCLOSURE AGREEMENT", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: `Effective Date: ${effectiveDate}` }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun("This Non-Disclosure Agreement (the “Agreement”) is made and entered into as of the Effective Date by and between:") ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("Disclosing Party:"),
+                new TextRun({ text: `\n\nName: ${yourName}`, bold: true }),
+                new TextRun({ text: `\nCompany: ${companyName}`, bold: true }),
+                new TextRun({ text: `\nPassport Number: ${yourPassport}`, bold: true }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("Receiving Party:"),
+                new TextRun({ text: `\n\nName: ${counterpartyName}`, bold: true }),
+                new TextRun({ text: `\nPassport Number: ${counterpartyPassport}`, bold: true }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("1. Purpose:"),
+                new TextRun({ text: `\n\nThe purpose of this Agreement is to protect Confidential Information disclosed by the Disclosing Party to the Receiving Party for the purpose of ${purpose}.` }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("2. Confidential Information:"),
+                new TextRun({ text: `\n\n“Confidential Information” means any and all information, whether written or oral, concerning the Disclosing Party's business, finances, products, services, customers, and intellectual property.` }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun("IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first above written.") ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ text: `________________________\nDisclosing Party Signature\n\nDate: ${currentDate}` }),
+              new Paragraph({ text: `\n\n________________________\nReceiving Party Signature\n\nDate: ${currentDate}` }),
+            ]
+          }];
 
-Action Items:
-${actionItems.split('-').filter(item => item.trim()).map(item => `- ${item.trim()}`).join('\n')}
-
-Prepared by: [Your Name]
-Date: ${new Date().toLocaleDateString()}
-
-This document was generated by DocuSignPro on ${new Date().toLocaleDateString()}.
-            `;
-            
-            // Generate and download the document after a short delay to show loading indicator
-            setTimeout(() => {
-                generateDocx(content, `Meeting-Protocol-${meetingTitle}.docx`);
-                document.getElementById('meetingLoading').style.display = 'none';
-                alert('Your Meeting Protocol has been generated and downloaded!');
-            }, 1500);
+          await generateDocx(sections, "Non-Disclosure_Agreement.docx");
+          if (loading) loading.style.display = 'none';
         });
-    </script>
+      }
+
+      // Service Agreement
+      const serviceForm = document.getElementById('serviceForm');
+      if (serviceForm) {
+        serviceForm.addEventListener('submit', async e => {
+          e.preventDefault();
+          const loading = document.getElementById('serviceLoading');
+          if (loading) loading.style.display = 'block';
+
+          const providerName = document.getElementById('providerName').value;
+          const clientName = document.getElementById('clientName').value;
+          const serviceDescription = document.getElementById('serviceDescription').value;
+          const serviceFee = document.getElementById('serviceFee').value;
+          const startDate = document.getElementById('startDate').value;
+          const endDate = document.getElementById('endDate').value;
+          const paymentTerms = document.getElementById('paymentTerms').value;
+
+          const sections = [{
+            children: [
+              new Paragraph({ text: "SERVICE AGREEMENT", heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("This Service Agreement (the “Agreement”) is made as of "),
+                new TextRun({ text: new Date(startDate).toLocaleDateString(), bold: true }),
+                new TextRun(", by and between "),
+                new TextRun({ text: providerName, bold: true }),
+                new TextRun(" (the “Service Provider”) and "),
+                new TextRun({ text: clientName, bold: true }),
+                new TextRun(" (the “Client”).")
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("1. Services:"),
+                new TextRun({ text: `\n\nService Provider agrees to provide the following services to the Client: ${serviceDescription}.` }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("2. Term:"),
+                new TextRun({ text: `\n\nThe term of this Agreement shall commence on ${new Date(startDate).toLocaleDateString()} and shall continue until ${new Date(endDate).toLocaleDateString()}, unless terminated earlier in accordance with this Agreement.` }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [
+                new TextRun("3. Compensation:"),
+                new TextRun({ text: `\n\nClient agrees to pay the Service Provider a fee of $${serviceFee}. The payment terms are as follows: ${paymentTerms}.` }),
+              ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun("IN WITNESS WHEREOF, the parties have executed this Agreement.") ] }),
+              new Paragraph({ text: `\n\n________________________\nService Provider Signature\n\n________________________\nClient Signature` }),
+            ]
+          }];
+
+          await generateDocx(sections, "Service_Agreement.docx");
+          if (loading) loading.style.display = 'none';
+        });
+      }
+
+      // Meeting Protocol
+      const meetingForm = document.getElementById('meetingForm');
+      if (meetingForm) {
+        meetingForm.addEventListener('submit', async e => {
+          e.preventDefault();
+          const loading = document.getElementById('meetingLoading');
+          if (loading) loading.style.display = 'block';
+
+          const meetingTitle = document.getElementById('meetingTitle').value;
+          const meetingDate = document.getElementById('meetingDate').value;
+          const meetingTime = document.getElementById('meetingTime').value;
+          const attendees = document.getElementById('attendees').value.split(',').map(s => s.trim()).filter(Boolean);
+          const meetingAgenda = document.getElementById('meetingAgenda').value.split('\n').map(s => s.trim()).filter(Boolean);
+          const decisions = document.getElementById('decisions').value.split('\n').map(s => s.trim()).filter(Boolean);
+          const actionItems = document.getElementById('actionItems').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+          const sections = [{
+            children: [
+              new Paragraph({ text: `MEETING PROTOCOL: ${meetingTitle.toUpperCase()}`, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ text: `Date: ${new Date(meetingDate).toLocaleDateString()}` }),
+              new Paragraph({ text: `Time: ${meetingTime}` }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun({ text: "Attendees:", bold: true }), ...attendees.map(n => new TextRun({ text: `\n• ${n}` })) ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun({ text: "Agenda:", bold: true }), ...meetingAgenda.map(i => new TextRun({ text: `\n• ${i}` })) ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun({ text: "Key Decisions:", bold: true }), ...decisions.map(i => new TextRun({ text: `\n• ${i}` })) ] }),
+              new Paragraph({ text: "" }),
+              new Paragraph({ children: [ new TextRun({ text: "Action Items:", bold: true }), ...actionItems.map(i => new TextRun({ text: `\n• ${i}` })) ] }),
+            ]
+          }];
+
+          await generateDocx(sections, "Meeting_Protocol.docx");
+          if (loading) loading.style.display = 'none';
+        });
+      }
+
+      // Initialize defaults on ready
+      setDefaultDates();
+    });
+  </script>
 </body>
 </html>
