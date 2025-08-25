@@ -4,8 +4,203 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DraftPro - Professional Document Generator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.1.0/docx.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+ <script>
+    // Set today's date as default for all date inputs
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        if (!input.id.includes('endDate')) {
+            input.valueAsDate = new Date();
+        }
+    });
+
+    // Set time default for meeting time
+    const meetingTimeInput = document.getElementById('meetingTime');
+    if (meetingTimeInput) {
+        meetingTimeInput.value = "10:00";
+    }
+
+    // Set end date to 30 days from now for service agreement
+    const endDateInput = document.getElementById('endDate');
+    if (endDateInput) {
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 30);
+        endDateInput.valueAsDate = endDate;
+    }
+
+    // Template selection functionality
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const templateType = this.getAttribute('data-template');
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            const formSection = document.getElementById(`${templateType}-form`);
+            if (formSection) {
+                formSection.classList.add('active');
+                window.scrollTo({
+                    top: formSection.offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Back to templates functionality
+    document.querySelectorAll('.back-to-templates').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.form-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            const templatesSection = document.getElementById('templates');
+            if (templatesSection) {
+                window.scrollTo({
+                    top: templatesSection.offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+
+    // Function to create and download DOCX file
+    async function generateDocx(sections, filename) {
+        const doc = new docx.Document({ sections });
+        try {
+            const buffer = await docx.Packer.toBuffer(doc);
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+            saveAs(blob, filename);
+        } catch (error) {
+            console.error('Error generating document:', error);
+            alert('An error occurred while generating the document. Please try again.');
+        }
+    }
+
+    // --- Form Submission Handlers ---
+
+    // NDA Form (Logic to be added here, similar to the service form)
+    document.getElementById('ndaForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const loading = document.getElementById('ndaLoading');
+        loading.style.display = 'block';
+
+        const yourName = document.getElementById('yourName').value;
+        const yourPassport = document.getElementById('yourPassport').value;
+        const companyName = document.getElementById('companyName').value;
+        const counterpartyName = document.getElementById('counterpartyName').value;
+        const counterpartyPassport = document.getElementById('counterpartyPassport').value;
+        const effectiveDate = document.getElementById('effectiveDate').value;
+        const purpose = document.getElementById('purpose').value;
+        const yourEmail = document.getElementById('yourEmail').value;
+        const yourPhone = document.getElementById('yourPhone').value;
+
+        // Example text for the NDA document
+        const sections = [{
+            children: [
+                new docx.Paragraph({
+                    text: `NON-DISCLOSURE AGREEMENT`,
+                    heading: docx.HeadingLevel.HEADING_1,
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 200 }
+                }),
+                new docx.Paragraph({ text: `This Non-Disclosure Agreement ("Agreement") is made and entered into on ${new Date(effectiveDate).toLocaleDateString()},` }),
+                new docx.Paragraph({ text: `BETWEEN:` }),
+                new docx.Paragraph({ text: `${yourName}, holding passport number ${yourPassport}, hereinafter referred to as the "Disclosing Party".` }),
+                new docx.Paragraph({ text: `AND` }),
+                new docx.Paragraph({ text: `${counterpartyName}, holding passport number ${counterpartyPassport}, hereinafter referred to as the "Receiving Party".` }),
+                new docx.Paragraph({ text: `The Disclosing Party and the Receiving Party are collectively referred to as the "Parties".` }),
+                new docx.Paragraph({ text: `1. PURPOSE. The Parties wish to engage in discussions regarding ${purpose}. In connection with this purpose, the Disclosing Party may disclose to the Receiving Party certain confidential information.` }),
+                // ... Add more paragraphs for the full NDA content
+            ]
+        }];
+
+        await generateDocx(sections, 'Non-Disclosure-Agreement.docx');
+        loading.style.display = 'none';
+    });
+
+    // Service Agreement Form
+    document.getElementById('serviceForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const loading = document.getElementById('serviceLoading');
+        loading.style.display = 'block';
+
+        // Get values from the form inputs
+        const providerName = document.getElementById('providerName').value;
+        const clientName = document.getElementById('clientName').value;
+        const serviceDescription = document.getElementById('serviceDescription').value;
+        const serviceFee = document.getElementById('serviceFee').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const paymentTerms = document.getElementById('paymentTerms').value;
+
+        // Create the document content using docx library
+        const sections = [{
+            children: [
+                new docx.Paragraph({
+                    text: `SERVICE AGREEMENT`,
+                    heading: docx.HeadingLevel.HEADING_1,
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 200 }
+                }),
+                new docx.Paragraph({ text: `This Service Agreement ("Agreement") is entered into as of ${new Date(startDate).toLocaleDateString()},` }),
+                new docx.Paragraph({ text: `BETWEEN:` }),
+                new docx.Paragraph({ text: `${providerName}, the "Service Provider"` }),
+                new docx.Paragraph({ text: `AND` }),
+                new docx.Paragraph({ text: `${clientName}, the "Client"` }),
+                new docx.Paragraph({ text: `1. SCOPE OF SERVICES. The Service Provider agrees to perform ${serviceDescription} for the Client.` }),
+                new docx.Paragraph({ text: `2. TERM. This Agreement shall commence on ${new Date(startDate).toLocaleDateString()} and shall terminate on ${new Date(endDate).toLocaleDateString()}, unless terminated earlier as provided herein.` }),
+                new docx.Paragraph({ text: `3. COMPENSATION. The Client shall pay the Service Provider a total fee of $${serviceFee} for the services. Payment shall be made according to the following terms: ${paymentTerms}.` }),
+                // Add more paragraphs as needed for the full agreement
+            ]
+        }];
+
+        // Generate and download the document
+        await generateDocx(sections, 'Service-Agreement.docx');
+
+        // Hide the loading spinner
+        loading.style.display = 'none';
+    });
+
+    // Meeting Protocol Form (Logic to be added here, similar to the service form)
+    document.getElementById('meetingForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const loading = document.getElementById('meetingLoading');
+        loading.style.display = 'block';
+
+        const meetingTitle = document.getElementById('meetingTitle').value;
+        const meetingDate = document.getElementById('meetingDate').value;
+        const meetingTime = document.getElementById('meetingTime').value;
+        const attendees = document.getElementById('attendees').value.split(',').map(name => name.trim());
+        const meetingAgenda = document.getElementById('meetingAgenda').value.split('\n').map(item => item.trim());
+        const decisions = document.getElementById('decisions').value.split('\n').map(item => item.trim());
+        const actionItems = document.getElementById('actionItems').value.split('\n').map(item => item.trim());
+
+        // Create document sections
+        const sections = [{
+            children: [
+                new docx.Paragraph({
+                    text: `MEETING PROTOCOL`,
+                    heading: docx.HeadingLevel.HEADING_1,
+                    alignment: docx.AlignmentType.CENTER,
+                    spacing: { after: 200 }
+                }),
+                new docx.Paragraph({ text: `Title: ${meetingTitle}` }),
+                new docx.Paragraph({ text: `Date: ${new Date(meetingDate).toLocaleDateString()}` }),
+                new docx.Paragraph({ text: `Time: ${meetingTime}` }),
+                new docx.Paragraph({ text: `Attendees: ${attendees.join(', ')}` }),
+                new docx.Paragraph({ text: `\nAgenda:` }),
+                ...meetingAgenda.map(item => new docx.Paragraph({ text: item })),
+                new docx.Paragraph({ text: `\nKey Decisions Made:` }),
+                ...decisions.map(item => new docx.Paragraph({ text: item })),
+                new docx.Paragraph({ text: `\nAction Items:` }),
+                ...actionItems.map(item => new docx.Paragraph({ text: item }))
+            ]
+        }];
+
+        await generateDocx(sections, 'Meeting-Protocol.docx');
+        loading.style.display = 'none';
+    });
+</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
